@@ -47,7 +47,19 @@ def get_characters():
 
 @bp.get("/<char_id>/greetings")
 def get_greetings(char_id):
-    pass
+    character = validate_model(Character, char_id)
+
+    if not character.greetings:
+        return {"message": f"No greetings found for {character.name}"}, 201
+    
+    response = {
+        "Character Name" : character.name,
+        "Greetings" : []
+    }
+    for greeting in character.greetings:
+        response["Greetings"].append(greeting.to_dict())
+
+    return response
 
 @bp.post("/<char_id>/generate")
 def add_greetings(char_id):
@@ -60,7 +72,7 @@ def add_greetings(char_id):
     new_greetings = []
     for greeting in greetings:
         new_greeting = Greeting(
-            greeting_text = greeting.strip("\""),
+            greeting_text = greeting.strip("\""), # Removes quotes from beginning and end of each greeting.
             character = character_obj
         )
         new_greetings.append(new_greeting)
@@ -71,15 +83,21 @@ def add_greetings(char_id):
     return {"message": f"Greetings successfully added to {character_obj.name}"}
 
 def generate_greetings(character):
+    # Previous approach:
     # model = genai.GenerativeModel("gemini-1.5-flash")
 
+    # Updated syntax. Adjusted prompt to force line breaks between greetings.
     input_message = f"I am writing a fantasy RPG video game. I have an npc named {character.name} who is {character.age} years old. They are a {character.occupation} who has a {character.personality} personality. Please generate a Python style list of 10 stock phrases they might use when the main character talks to them. Please return just the list without a variable name and square brackets. Please separate items in the list with an endline character"
     response = client.models.generate_content(
         model='gemini-1.5-flash',
         contents=input_message
     )
+
+    # Split response text by end of line character to get each greeting as a separate item in the list.
     response_split = response.text.split("\n")
+    # The split ends with an extra empty string, so return the list without it.
     return response_split[:-1]
+
 def validate_model(cls,id):
     try:
         id = int(id)
